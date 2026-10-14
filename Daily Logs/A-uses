@@ -1,0 +1,406 @@
+1. Established the Project Foundation
+
+We created the initial C++ project structure and shared data types.
+
+The foundation includes:
+
+CMakeLists.txt — Defines the project build configuration.
+
+include/ghostbyte/types.hpp — Defines shared data structures and enumerations.
+
+src/main.cpp — Provides the program entry point.
+
+.gitignore — Excludes generated build files and other unwanted files.
+
+Initial directories for implementation, tests, and documentation.
+
+These files establish the structure needed to develop GhostByte as a modular C++ application.
+
+2. Set Up Version Control
+
+We initialized Git, created the initial commit, and pushed the project to GitHub.
+
+Version control allows us to:
+
+Track implementation changes.
+
+Restore earlier versions when necessary.
+
+Organize development into milestones.
+
+Experiment without losing the project's history.
+
+Maintain a record of the project's progress.
+
+3. Established the Development Environment
+
+Development has moved from an initially prepared native Windows toolchain to an Ubuntu terminal.
+
+This affects how GhostByte will collect system memory statistics.
+
+On Linux, the initial monitor will use /proc/meminfo, a virtual file that exposes memory information provided by the kernel.
+
+This replaces the Windows-specific GlobalMemoryStatusEx approach considered earlier.
+
+Development will continue in the existing repository.
+
+Current Project Status
+
+Component
+
+Status
+
+Initial project structure
+
+Completed
+
+Shared data types
+
+Created
+
+Initial Git commit
+
+Completed
+
+GitHub push
+
+Confirmed
+
+Ubuntu development environment
+
+Selected
+
+Linux memory monitor
+
+Next milestone
+
+Memory-pressure analysis
+
+Planned
+
+Adaptive policy engine
+
+Planned
+
+Reclamation mechanisms
+
+Planned
+
+Feedback and evaluation
+
+Planned
+
+Benchmarking
+
+Planned
+
+Important: Creating a file or defining a data structure does not mean the associated functionality is implemented. At this stage, GhostByte is a project foundation rather than a working adaptive reclamation controller.
+
+Project Structure
+
+The following is the intended modular organization of the project. Some files and directories are planned and may not exist in the current checkout yet.
+
+GhostByte/
+├── CMakeLists.txt
+├── README.md
+├── .gitignore
+│
+├── include/
+│   └── ghostbyte/
+│       ├── types.hpp
+│       ├── system_monitor.hpp
+│       ├── pressure_analyzer.hpp
+│       ├── policy_engine.hpp
+│       ├── reclaimer.hpp
+│       └── feedback_controller.hpp
+│
+├── src/
+│   ├── main.cpp
+│   ├── system_monitor.cpp
+│   ├── pressure_analyzer.cpp
+│   ├── policy_engine.cpp
+│   ├── reclaimer.cpp
+│   └── feedback_controller.cpp
+│
+├── tests/
+│   ├── test_system_monitor.cpp
+│   ├── test_pressure_analyzer.cpp
+│   └── test_policy_engine.cpp
+│
+├── docs/
+│   ├── architecture.md
+│   └── experiments.md
+│
+└── build/                  # Generated locally; ignored by Git
+
+The exact structure may evolve as the project develops.
+
+Understanding Each File and Folder
+
+Root-Level Files
+
+CMakeLists.txt — Build Configuration
+
+CMake describes how the C++ project should be compiled and linked into an executable.
+
+It specifies details such as:
+
+The required C++ standard.
+
+Source files included in the executable.
+
+Header file locations.
+
+Build targets and dependencies.
+
+Test configuration, when added.
+
+For example, when system_monitor.cpp is implemented, it must be included in the appropriate CMake target.
+
+Think of this file as the build recipe for GhostByte.
+
+README.md — Project Documentation
+
+The README introduces the project to developers and visitors on GitHub.
+
+It documents the project's purpose, architecture, setup instructions, current capabilities, limitations, and development roadmap.
+
+It should clearly distinguish implemented functionality from planned functionality.
+
+.gitignore — Excluded Files
+
+The .gitignore file specifies files and directories Git should generally leave untracked.
+
+Typical exclusions include:
+
+Build directories.
+
+Compiled executables and object files.
+
+Temporary files.
+
+Local IDE configuration.
+
+Generated test artifacts.
+
+This keeps the repository focused on source code and project assets.
+
+include/ghostbyte/ — Interfaces and Shared Definitions
+
+The include/ghostbyte/ directory contains header files (.hpp).
+
+These files declare shared types, classes, and function interfaces that other components can use.
+
+A header generally describes what a component exposes, while its corresponding .cpp file implements how it works.
+
+types.hpp — Shared Data Types
+
+This is one of the initial files created for GhostByte.
+
+It defines common concepts used throughout the architecture.
+
+MemorySnapshot
+
+Stores a snapshot of memory statistics collected from the operating system.
+
+Depending on the final implementation, it may contain values such as total memory, available memory, used memory, and timestamps.
+
+PressureLevel
+
+Represents the assessed memory-pressure level.
+
+Possible values:
+
+Healthy
+
+Elevated
+
+Critical
+
+Unknown
+
+ReclamationMode
+
+Represents the intended response to memory pressure.
+
+Possible values:
+
+None
+
+Conservative
+
+Moderate
+
+Aggressive
+
+PolicyDecision
+
+Stores the result of a policy evaluation, including the assessed pressure level, selected response, and an explanation for the decision.
+
+These shared types help different components communicate using consistent representations.
+
+Status: Initial data structures exist; their integration into a working controller remains future work.
+
+system_monitor.hpp — Memory Monitor Interface
+
+Defines how other components request system-memory measurements.
+
+For example, the interface could expose a method such as:
+
+MemorySnapshot capture();
+
+The rest of GhostByte should not need to know how Linux-specific memory statistics are collected.
+
+Keeping the interface independent of operating-system details makes the architecture easier to test and extend.
+
+Status: Planned for the Linux implementation.
+
+pressure_analyzer.hpp — Memory-Pressure Interface
+
+Defines how GhostByte will interpret memory statistics and classify memory pressure.
+
+For example, it may accept a MemorySnapshot and return a PressureLevel.
+
+The implementation could initially use configurable thresholds based on available memory, followed by more advanced indicators if required.
+
+Status: Planned.
+
+policy_engine.hpp — Decision-Making Interface
+
+Defines how GhostByte will select a response to the detected memory pressure.
+
+The policy engine will consider the pressure assessment and any additional workload information supported by the implementation.
+
+For example, it might choose a conservative response under elevated pressure and a stronger response under critical pressure.
+
+These are intended policy behaviors, not implemented guarantees.
+
+Status: Planned.
+
+reclaimer.hpp — Reclamation Interface
+
+Defines how a selected reclamation action will be carried out.
+
+This component must distinguish between actions that merely simulate a decision and actions that actually change memory-management behavior.
+
+Possible future approaches include supported Linux memory-management interfaces or controlled, explicitly configured reclamation experiments.
+
+Reclaiming memory safely requires careful consideration of permissions, kernel behavior, workload impact, and system stability.
+
+Status: Planned.
+
+feedback_controller.hpp — Feedback Interface
+
+Defines how GhostByte will compare system conditions before and after a reclamation action.
+
+The feedback component will help evaluate whether a chosen action improved memory availability or caused undesirable side effects.
+
+Its findings may later influence policy selection.
+
+Status: Planned.
+
+src/ — Implementation Files
+
+The src/ directory contains the C++ implementations of GhostByte's components.
+
+main.cpp — Program Entry Point
+
+The main() function is where execution begins.
+
+Initially, it can be used to verify that the project builds and runs correctly.
+
+As the project develops, it will coordinate the major components:
+
+Collect a memory snapshot.
+
+Analyze memory pressure.
+
+Request a policy decision.
+
+Execute an enabled reclamation action.
+
+Collect follow-up measurements.
+
+Report the results.
+
+The complete sequence will be introduced incrementally rather than implemented all at once.
+
+system_monitor.cpp — Linux Memory Monitoring
+
+Implements memory-statistics collection for Ubuntu/Linux.
+
+The initial implementation will read /proc/meminfo and parse relevant fields, such as MemTotal, MemAvailable, and MemFree.
+
+These values have different meanings. In particular, MemAvailable estimates memory available for new applications without requiring substantial swapping, whereas MemFree measures memory that is currently unused.
+
+The monitor will translate the collected information into the shared MemorySnapshot structure.
+
+pressure_analyzer.cpp — Pressure Classification
+
+Implements the logic that translates memory statistics into a pressure classification.
+
+An initial version may use simple thresholds. Later versions could consider additional indicators, such as changes in available memory and swapping activity.
+
+The thresholds should be configurable and evaluated experimentally rather than treated as universal values.
+
+policy_engine.cpp — Adaptive Decision Logic
+
+Implements the rules used to choose a reclamation response.
+
+The initial policy may use explicit rules based on pressure levels. A later version could incorporate workload characteristics and observed outcomes.
+
+This separation makes it possible to compare different policies without rewriting the memory monitor.
+
+reclaimer.cpp — Reclamation Actions
+
+Implements the selected reclamation mechanisms.
+
+This component will be developed cautiously, starting with safe experiments and controlled actions before considering more intrusive mechanisms.
+
+The exact implementation will depend on the Linux interfaces selected for the project.
+
+feedback_controller.cpp — Outcome Evaluation
+
+Implements the process of comparing measurements before and after an action.
+
+It may evaluate changes in available memory, pressure classification, swapping activity, and workload performance.
+
+The objective is to determine whether a response was useful, ineffective, or harmful.
+
+tests/ — Automated Tests
+
+The tests/ directory will contain tests for individual components.
+
+test_system_monitor.cpp
+
+Checks whether memory statistics are collected and parsed correctly.
+
+test_pressure_analyzer.cpp
+
+Checks whether representative memory snapshots produce the expected pressure classifications.
+
+test_policy_engine.cpp
+
+Checks whether the policy selects the expected response for each pressure level and other supported inputs.
+
+Unit tests allow us to verify individual components before integrating them into the full program.
+
+docs/ — Technical Documentation
+
+architecture.md
+
+Documents the system architecture, component responsibilities, interfaces, and data flow.
+
+experiments.md
+
+Records benchmark methodology, test conditions, measured results, and observations from different reclamation policies.
+
+Documenting experiments is important because a policy that appears effective in one workload may perform poorly in another.
+
+build/ — Generated Build Artifacts
+
+The build/ directory contains generated files produced during compilation.
+
+For example, it may contain CMake configuration files, object files, and the compiled executable.
+
+This directory is generated locally and should generally be excluded from version control.
