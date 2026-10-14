@@ -1,0 +1,24 @@
+
+# CMake build output
+build/
+cmake-build-*/
+
+# Compiled binaries and object files
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.pdb
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Editor and operating system files
+.vscode/
+.DS_Store
+Thumbs.db
