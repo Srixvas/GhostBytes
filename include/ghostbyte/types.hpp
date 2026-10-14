@@ -1,0 +1,39 @@
+
+#ifndef GHOSTBYTE_TYPES_HPP
+#define GHOSTBYTE_TYPES_HPP
+
+#include <cstdint>
+
+namespace ghostbyte {
+
+enum class PressureLevel {
+    Healthy,
+    Elevated,
+    Critical,
+    Unknown
+};
+
+enum class ReclamationMode {
+    None,
+    Conservative,
+    Moderate,
+    Aggressive
+};
+
+struct MemorySnapshot {
+    std::uint64_t total_memory_bytes = 0;
+    std::uint64_t available_memory_bytes = 0;
+    std::uint64_t swap_total_bytes = 0;
+    std::uint64_t swap_free_bytes = 0;
+    bool valid = false;
+};
+
+struct PolicyDecision {
+    PressureLevel pressure = PressureLevel::Unknown;
+    ReclamationMode mode = ReclamationMode::None;
+    const char* reason = "No decision made";
+};
+
+}
+
+#endif
