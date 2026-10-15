@@ -1,4 +1,7 @@
 Understood the skeleton of our coding approach via ChatGPT and other AI tools
+
 Made a file CMakeLists that describes which files to compile, which language to use and how the program is assembled. ex- if we add hi.cpp we must register so that CMake makes it part of the executable
+
 Added .gitignore that contains all compiled executables,object files and config files that shudnt be committed everytime
+
 Added include/ghostbyte that contains header files .hpp . THese declare the structure classes and function that a program can use.

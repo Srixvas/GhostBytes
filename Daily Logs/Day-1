@@ -1,4 +1,10 @@
 Planned a proper workflow and the relevant files and folders needed in order to ensure a proper workflow
+
+
 Installed the necessary packages and set up a WSL in order to form a bridge between Windows and Linux system.
+
+
 Made a SSh key and linked it to a Ubuntu system in order to run and get info in real time when we get to the part
+
+
 Added and edited the contents of README file which describes our entire project and explains wt we will be doing.
