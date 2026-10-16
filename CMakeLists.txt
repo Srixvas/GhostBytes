@@ -1,4 +1,3 @@
-
 cmake_minimum_required(VERSION 3.20)
 
 project(GhostByte
@@ -13,6 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(ghostbyte
     src/main.cpp
+    src/system_monitor.cpp
 )
 
 target_include_directories(ghostbyte
