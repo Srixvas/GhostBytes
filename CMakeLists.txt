@@ -36,6 +36,7 @@ add_executable(ghostbyte_tests
     tests/test_pressure_policy.cpp
     src/pressure_analyzer.cpp
     src/policy_engine.cpp
+    src/reclamation_controller.cpp
 )
 
 target_include_directories(ghostbyte_tests

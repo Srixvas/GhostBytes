@@ -1,6 +1,6 @@
-
 #include "ghostbyte/pressure_analyzer.hpp"
 #include "ghostbyte/policy_engine.hpp"
+#include "ghostbyte/reclamation_controller.hpp"
 
 #include <cassert>
 #include <cstdint>
@@ -23,6 +23,7 @@ MemorySnapshot make_snapshot(
 int main() {
     PressureAnalyzer analyzer;
     PolicyEngine engine;
+    ReclamationController controller;
 
     const std::uint64_t total = 1000;
 
@@ -31,7 +32,6 @@ int main() {
     assert(analyzer.analyze(make_snapshot(total, 200)) == PressureLevel::Elevated);
     assert(analyzer.analyze(make_snapshot(total, 100)) == PressureLevel::Critical);
     assert(analyzer.analyze(make_snapshot(total, 0)) == PressureLevel::Critical);
-
     assert(analyzer.analyze(make_snapshot(total, 0, false)) == PressureLevel::Unknown);
     assert(analyzer.analyze(make_snapshot(0, 0)) == PressureLevel::Unknown);
     assert(analyzer.analyze(make_snapshot(total, 1100)) == PressureLevel::Unknown);
@@ -42,7 +42,44 @@ int main() {
     assert(engine.decide(PressureLevel::Critical).mode == ReclamationMode::Aggressive);
     assert(engine.decide(PressureLevel::Unknown).mode == ReclamationMode::None);
 
-    std::cout << "All PressureAnalyzer and PolicyEngine tests passed!\n";
+    // Controller: no reclamation required
+    PolicyDecision healthy = engine.decide(PressureLevel::Healthy);
+    ReclamationResult result = controller.execute(healthy);
+
+    assert(!result.action_taken);
+    assert(result.mode == ReclamationMode::None);
+    assert(result.message == "No reclamation required");
+
+    // Controller: conservative dry run
+    PolicyDecision elevated = engine.decide(PressureLevel::Elevated);
+    result = controller.execute(elevated);
+
+    assert(!result.action_taken);
+    assert(result.mode == ReclamationMode::Conservative);
+    assert(result.message == "DRY RUN: Conservative reclamation planned");
+
+    // Controller: aggressive dry run
+    PolicyDecision critical = engine.decide(PressureLevel::Critical);
+    result = controller.execute(critical);
+
+    assert(!result.action_taken);
+    assert(result.mode == ReclamationMode::Aggressive);
+    assert(result.message == "DRY RUN: Aggressive reclamation planned");
+
+    // Unknown pressure must never trigger an action
+    PolicyDecision unknown = engine.decide(PressureLevel::Unknown);
+    result = controller.execute(unknown);
+
+    assert(!result.action_taken);
+    assert(result.message == "Unknown memory pressure; no action taken");
+
+    // Real reclamation is not implemented yet
+    result = controller.execute(critical, false);
+
+    assert(!result.action_taken);
+    assert(result.message == "Real reclamation is not implemented yet");
+
+    std::cout << "All GhostBytes tests passed!\n";
 
     return 0;
 }

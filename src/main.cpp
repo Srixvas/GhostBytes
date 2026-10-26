@@ -1,97 +1,90 @@
-#include <cstdint>
+#include "ghostbyte/system_monitor.hpp"
+#include "ghostbyte/pressure_analyzer.hpp"
+#include "ghostbyte/policy_engine.hpp"
+#include "ghostbyte/reclamation_controller.hpp"
+
+#include <iomanip>
 #include <iostream>
 
-#include "ghostbyte/policy_engine.hpp"
-#include "ghostbyte/pressure_analyzer.hpp"
-#include "ghostbyte/system_monitor.hpp"
-#include "ghostbyte/types.hpp"
+namespace {
 
-int main() {
-    std::cout << "GhostByte v0.1.0\n";
-    std::cout << "Workload-Aware Adaptive Memory Reclamation\n";
-
-#if defined(_WIN32)
-    std::cout << "Platform: Windows\n";
-#elif defined(__linux__)
-    std::cout << "Platform: Linux\n";
-#else
-    std::cout << "Platform: Unknown\n";
-#endif
-
-    const ghostbyte::SystemMonitor monitor;
-    const ghostbyte::PressureAnalyzer analyzer;
-    const ghostbyte::PolicyEngine policy_engine;
-
-    const ghostbyte::MemorySnapshot snapshot = monitor.capture();
-    const ghostbyte::PressureLevel pressure = analyzer.analyze(snapshot);
-    const ghostbyte::PolicyDecision decision =
-        policy_engine.decide(pressure);
-
-    std::cout << "\nMonitoring initialized: "
-              << (snapshot.valid ? "yes" : "no") << '\n';
-
-    if (snapshot.valid) {
-        constexpr std::uint64_t bytes_per_mib = 1024 * 1024;
-
-        std::cout << "Total memory: "
-                  << snapshot.total_memory_bytes / bytes_per_mib
-                  << " MiB\n";
-
-        std::cout << "Available memory: "
-                  << snapshot.available_memory_bytes / bytes_per_mib
-                  << " MiB\n";
-
-        std::cout << "Total swap: "
-                  << snapshot.swap_total_bytes / bytes_per_mib
-                  << " MiB\n";
-
-        std::cout << "Free swap: "
-                  << snapshot.swap_free_bytes / bytes_per_mib
-                  << " MiB\n";
-
-        const double available_percent =
-            (static_cast<double>(snapshot.available_memory_bytes) /
-             static_cast<double>(snapshot.total_memory_bytes)) * 100.0;
-
-        std::cout << "Available memory percentage: "
-                  << available_percent << "%\n";
-    }
-
-    std::cout << "Current pressure assessment: ";
+const char* pressure_name(ghostbyte::PressureLevel pressure) {
+    using ghostbyte::PressureLevel;
 
     switch (pressure) {
-        case ghostbyte::PressureLevel::Healthy:
-            std::cout << "Healthy\n";
-            break;
-        case ghostbyte::PressureLevel::Elevated:
-            std::cout << "Elevated\n";
-            break;
-        case ghostbyte::PressureLevel::Critical:
-            std::cout << "Critical\n";
-            break;
-        case ghostbyte::PressureLevel::Unknown:
-            std::cout << "Unknown\n";
-            break;
+        case PressureLevel::Healthy:  return "Healthy";
+        case PressureLevel::Elevated: return "Elevated";
+        case PressureLevel::Critical: return "Critical";
+        case PressureLevel::Unknown:  return "Unknown";
     }
 
-    std::cout << "Selected reclamation mode: ";
+    return "Unknown";
+}
 
-    switch (decision.mode) {
-        case ghostbyte::ReclamationMode::None:
-            std::cout << "None\n";
-            break;
-        case ghostbyte::ReclamationMode::Conservative:
-            std::cout << "Conservative\n";
-            break;
-        case ghostbyte::ReclamationMode::Moderate:
-            std::cout << "Moderate\n";
-            break;
-        case ghostbyte::ReclamationMode::Aggressive:
-            std::cout << "Aggressive\n";
-            break;
+const char* mode_name(ghostbyte::ReclamationMode mode) {
+    using ghostbyte::ReclamationMode;
+
+    switch (mode) {
+        case ReclamationMode::None:         return "None";
+        case ReclamationMode::Conservative: return "Conservative";
+        case ReclamationMode::Moderate:     return "Moderate";
+        case ReclamationMode::Aggressive:  return "Aggressive";
     }
 
-    std::cout << "Decision reason: " << decision.reason << '\n';
+    return "Unknown";
+}
 
-    return snapshot.valid ? 0 : 1;
+}
+
+int main() {
+    using namespace ghostbyte;
+
+    SystemMonitor monitor;
+    PressureAnalyzer analyzer;
+    PolicyEngine engine;
+    ReclamationController controller;
+
+    MemorySnapshot snapshot = monitor.capture();
+
+    if (!snapshot.valid) {
+        std::cerr << "Failed to collect valid memory statistics.\n";
+        return 1;
+    }
+
+    const double total_mib =
+        static_cast<double>(snapshot.total_memory_bytes) / (1024.0 * 1024.0);
+
+    const double available_mib =
+        static_cast<double>(snapshot.available_memory_bytes) / (1024.0 * 1024.0);
+
+    const double available_percent =
+        snapshot.total_memory_bytes == 0
+            ? 0.0
+            : static_cast<double>(snapshot.available_memory_bytes) /
+                  static_cast<double>(snapshot.total_memory_bytes) * 100.0;
+
+    const PressureLevel pressure = analyzer.analyze(snapshot);
+    const PolicyDecision decision = engine.decide(pressure);
+    const ReclamationResult result = controller.execute(decision, true);
+
+    std::cout << "========== GhostBytes ==========\n";
+    std::cout << std::fixed << std::setprecision(2);
+
+    std::cout << "Total memory:      " << total_mib << " MiB\n";
+    std::cout << "Available memory:  " << available_mib << " MiB\n";
+    std::cout << "Available memory:  " << available_percent << "%\n";
+
+    std::cout << "\n--- Analysis ---\n";
+    std::cout << "Pressure level:    " << pressure_name(pressure) << '\n';
+    std::cout << "Reclamation mode:  " << mode_name(decision.mode) << '\n';
+    std::cout << "Policy reason:     " << decision.reason << '\n';
+
+    std::cout << "\n--- Controller ---\n";
+    std::cout << result.message << '\n';
+    std::cout << "Action performed:  "
+              << (result.action_taken ? "Yes" : "No") << '\n';
+
+    std::cout << "===============================\n";
+
+    return 0;
 }
