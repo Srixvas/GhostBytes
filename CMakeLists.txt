@@ -27,3 +27,19 @@ if(MSVC)
 else()
     target_compile_options(ghostbyte PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+
+enable_testing()
+
+add_executable(ghostbyte_tests
+    tests/test_pressure_policy.cpp
+    src/pressure_analyzer.cpp
+    src/policy_engine.cpp
+)
+
+target_include_directories(ghostbyte_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+add_test(NAME GhostByteTests COMMAND ghostbyte_tests)
