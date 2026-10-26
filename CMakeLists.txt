@@ -15,6 +15,7 @@ add_executable(ghostbyte
     src/system_monitor.cpp
     src/pressure_analyzer.cpp
     src/policy_engine.cpp
+    src/reclamation_controller.cpp
 )
 
 target_include_directories(ghostbyte
