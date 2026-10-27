@@ -1,0 +1,10 @@
+Started working on config.cpp
+
+Created header files for config.cpp
+
+Old threshold values were hardcoded so thought of making it more
+adaptive and system oriented.
+
+Completed config modules
+
+This helps us get values from system than hardcoding them.

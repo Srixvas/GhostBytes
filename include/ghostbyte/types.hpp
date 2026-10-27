@@ -3,6 +3,7 @@
 #define GHOSTBYTE_TYPES_HPP
 
 #include <cstdint>
+#include <string>
 
 namespace ghostbyte {
 
@@ -25,6 +26,13 @@ struct MemorySnapshot {
     std::uint64_t available_memory_bytes = 0;
     std::uint64_t swap_total_bytes = 0;
     std::uint64_t swap_free_bytes = 0;
+    bool valid = false;
+};
+
+struct ProcessSnapshot {
+    int pid = 0;
+    std::string name;
+    std::uint64_t resident_memory_bytes = 0;
     bool valid = false;
 };
 
