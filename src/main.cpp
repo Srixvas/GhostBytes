@@ -3,6 +3,7 @@
 #include "ghostbyte/policy_engine.hpp"
 #include "ghostbyte/reclamation_controller.hpp"
 #include "ghostbyte/logger.hpp"
+#include "ghostbyte/config.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -41,8 +42,15 @@ const char* mode_name(ghostbyte::ReclamationMode mode) {
 int main() {
     using namespace ghostbyte;
 
+    Config config;
+
+    if (!config.is_valid()) {
+        std::cerr << "Invalid GhostBytes configuration.\n";
+        return 1;
+    }
+
     SystemMonitor monitor;
-    PressureAnalyzer analyzer;
+    PressureAnalyzer analyzer(config);
     PolicyEngine engine;
     ReclamationController controller;
     Logger logger;

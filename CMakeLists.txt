@@ -12,6 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(ghostbyte
     src/main.cpp
+    src/config.cpp
     src/system_monitor.cpp
     src/pressure_analyzer.cpp
     src/policy_engine.cpp
@@ -35,6 +36,7 @@ enable_testing()
 
 add_executable(ghostbyte_tests
     tests/test_pressure_policy.cpp
+    src/config.cpp
     src/pressure_analyzer.cpp
     src/policy_engine.cpp
     src/reclamation_controller.cpp

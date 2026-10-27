@@ -1,3 +1,4 @@
+#include "ghostbyte/config.hpp"
 #include "ghostbyte/pressure_analyzer.hpp"
 #include "ghostbyte/policy_engine.hpp"
 #include "ghostbyte/reclamation_controller.hpp"
@@ -21,13 +22,16 @@ MemorySnapshot make_snapshot(
 }
 
 int main() {
-    PressureAnalyzer analyzer;
+    Config config;
+    assert(config.is_valid());
+
+    PressureAnalyzer analyzer(config);
     PolicyEngine engine;
     ReclamationController controller;
 
     const std::uint64_t total = 1000;
 
-    // PressureAnalyzer tests
+    // Default pressure thresholds: 10% Critical, 20% Elevated
     assert(analyzer.analyze(make_snapshot(total, 650)) == PressureLevel::Healthy);
     assert(analyzer.analyze(make_snapshot(total, 200)) == PressureLevel::Elevated);
     assert(analyzer.analyze(make_snapshot(total, 100)) == PressureLevel::Critical);
@@ -35,6 +39,29 @@ int main() {
     assert(analyzer.analyze(make_snapshot(total, 0, false)) == PressureLevel::Unknown);
     assert(analyzer.analyze(make_snapshot(0, 0)) == PressureLevel::Unknown);
     assert(analyzer.analyze(make_snapshot(total, 1100)) == PressureLevel::Unknown);
+
+    // Custom thresholds: 15% Critical, 30% Elevated
+    Config custom_config;
+    custom_config.critical_threshold_percent = 15.0;
+    custom_config.elevated_threshold_percent = 30.0;
+
+    assert(custom_config.is_valid());
+
+    PressureAnalyzer custom_analyzer(custom_config);
+
+    assert(custom_analyzer.analyze(make_snapshot(total, 150)) == PressureLevel::Critical);
+    assert(custom_analyzer.analyze(make_snapshot(total, 250)) == PressureLevel::Elevated);
+    assert(custom_analyzer.analyze(make_snapshot(total, 400)) == PressureLevel::Healthy);
+
+    // Invalid configuration must be rejected by validation and analysis
+    Config invalid_config;
+    invalid_config.critical_threshold_percent = 35.0;
+    invalid_config.elevated_threshold_percent = 20.0;
+
+    assert(!invalid_config.is_valid());
+
+    PressureAnalyzer invalid_analyzer(invalid_config);
+    assert(invalid_analyzer.analyze(make_snapshot(total, 500)) == PressureLevel::Unknown);
 
     // PolicyEngine tests
     assert(engine.decide(PressureLevel::Healthy).mode == ReclamationMode::None);
