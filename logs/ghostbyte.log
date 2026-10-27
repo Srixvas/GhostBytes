@@ -1,0 +1,7 @@
+[2026-10-27 06:05:13] Total memory: 3841.687500 MiB
+[2026-10-27 06:05:13] Available memory: 2176.507812 MiB
+[2026-10-27 06:05:13] Available memory: 56.654994%
+[2026-10-27 06:05:13] Pressure level: Healthy
+[2026-10-27 06:05:13] Reclamation mode: None
+[2026-10-27 06:05:13] Policy reason: Memory availability is healthy
+[2026-10-27 06:05:13] Controller result: No reclamation required

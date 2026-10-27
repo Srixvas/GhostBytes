@@ -2,9 +2,11 @@
 #include "ghostbyte/pressure_analyzer.hpp"
 #include "ghostbyte/policy_engine.hpp"
 #include "ghostbyte/reclamation_controller.hpp"
+#include "ghostbyte/logger.hpp"
 
 #include <iomanip>
 #include <iostream>
+#include <string>
 
 namespace {
 
@@ -28,7 +30,7 @@ const char* mode_name(ghostbyte::ReclamationMode mode) {
         case ReclamationMode::None:         return "None";
         case ReclamationMode::Conservative: return "Conservative";
         case ReclamationMode::Moderate:     return "Moderate";
-        case ReclamationMode::Aggressive:  return "Aggressive";
+        case ReclamationMode::Aggressive:   return "Aggressive";
     }
 
     return "Unknown";
@@ -43,11 +45,17 @@ int main() {
     PressureAnalyzer analyzer;
     PolicyEngine engine;
     ReclamationController controller;
+    Logger logger;
 
     MemorySnapshot snapshot = monitor.capture();
 
     if (!snapshot.valid) {
         std::cerr << "Failed to collect valid memory statistics.\n";
+
+        if (!logger.log("ERROR: Failed to collect valid memory statistics")) {
+            std::cerr << "Warning: Could not write to the log file.\n";
+        }
+
         return 1;
     }
 
@@ -66,6 +74,33 @@ int main() {
     const PressureLevel pressure = analyzer.analyze(snapshot);
     const PolicyDecision decision = engine.decide(pressure);
     const ReclamationResult result = controller.execute(decision, true);
+
+    bool logging_ok = true;
+
+    logging_ok &= logger.log(
+        "Total memory: " + std::to_string(total_mib) + " MiB");
+
+    logging_ok &= logger.log(
+        "Available memory: " + std::to_string(available_mib) + " MiB");
+
+    logging_ok &= logger.log(
+        "Available memory: " + std::to_string(available_percent) + "%");
+
+    logging_ok &= logger.log(
+        "Pressure level: " + std::string(pressure_name(pressure)));
+
+    logging_ok &= logger.log(
+        "Reclamation mode: " + std::string(mode_name(decision.mode)));
+
+    logging_ok &= logger.log(
+        "Policy reason: " + std::string(decision.reason));
+
+    logging_ok &= logger.log(
+        "Controller result: " + result.message);
+
+    if (!logging_ok) {
+        std::cerr << "Warning: One or more log entries could not be written.\n";
+    }
 
     std::cout << "========== GhostBytes ==========\n";
     std::cout << std::fixed << std::setprecision(2);
