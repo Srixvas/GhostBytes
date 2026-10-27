@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <vector>
 
 using namespace ghostbyte;
 
@@ -68,6 +69,31 @@ int main() {
     assert(engine.decide(PressureLevel::Elevated).mode == ReclamationMode::Conservative);
     assert(engine.decide(PressureLevel::Critical).mode == ReclamationMode::Aggressive);
     assert(engine.decide(PressureLevel::Unknown).mode == ReclamationMode::None);
+
+    // Workload-aware policy tests
+    std::vector<ProcessSnapshot> processes = {
+        {101, "small-worker", 10 * 1024, true},
+        {202, "large-worker", 50 * 1024, true},
+        {303, "invalid-worker", 100 * 1024, false},
+        {0, "invalid-pid", 200 * 1024, true}
+    };
+
+    PolicyDecision workload_decision =
+        engine.decide(PressureLevel::Critical, processes);
+
+    assert(workload_decision.mode == ReclamationMode::Aggressive);
+    assert(workload_decision.candidate_pid == 202);
+    assert(workload_decision.candidate_name == "large-worker");
+    assert(workload_decision.candidate_rss_bytes == 50 * 1024);
+
+    PolicyDecision healthy_workload =
+        engine.decide(PressureLevel::Healthy, processes);
+    assert(healthy_workload.candidate_pid == -1);
+
+    PolicyDecision empty_workload =
+        engine.decide(PressureLevel::Critical, {});
+    assert(empty_workload.candidate_pid == -1);
+    assert(empty_workload.mode == ReclamationMode::Aggressive);
 
     // Controller: no reclamation required
     PolicyDecision healthy = engine.decide(PressureLevel::Healthy);

@@ -32,4 +32,42 @@ PolicyDecision PolicyEngine::decide(PressureLevel pressure) const {
     return decision;
 }
 
+
+PolicyDecision PolicyEngine::decide(
+    PressureLevel pressure,
+    const std::vector<ProcessSnapshot>& processes) const {
+
+    PolicyDecision decision = decide(pressure);
+
+    if (pressure == PressureLevel::Unknown ||
+        pressure == PressureLevel::Healthy) {
+        return decision;
+    }
+
+    const ProcessSnapshot* largest = nullptr;
+
+    for (const auto& process : processes) {
+        if (!process.valid || process.pid <= 0 ||
+            process.resident_memory_bytes == 0) {
+            continue;
+        }
+
+        if (largest == nullptr ||
+            process.resident_memory_bytes > largest->resident_memory_bytes) {
+            largest = &process;
+        }
+    }
+
+    if (largest != nullptr) {
+        decision.candidate_pid = largest->pid;
+        decision.candidate_name = largest->name;
+        decision.candidate_rss_bytes = largest->resident_memory_bytes;
+        decision.reason = pressure == PressureLevel::Critical
+            ? "Critical memory pressure; largest RSS process identified for assessment"
+            : "Elevated memory pressure; largest RSS process identified for assessment";
+    }
+
+    return decision;
+}
+
 }

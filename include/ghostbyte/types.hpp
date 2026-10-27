@@ -40,6 +40,9 @@ struct PolicyDecision {
     PressureLevel pressure = PressureLevel::Unknown;
     ReclamationMode mode = ReclamationMode::None;
     const char* reason = "No decision made";
+    int candidate_pid = -1;
+    std::string candidate_name;
+    std::uint64_t candidate_rss_bytes = 0;
 };
 
 }
