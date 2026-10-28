@@ -9,7 +9,9 @@ bool Config::is_valid() const {
            std::isfinite(elevated_threshold_percent) &&
            critical_threshold_percent >= 0.0 &&
            elevated_threshold_percent <= 100.0 &&
-           critical_threshold_percent < elevated_threshold_percent;
+           critical_threshold_percent < elevated_threshold_percent &&
+           sampling_interval_seconds >= 1 &&
+           sampling_interval_seconds <= 3600;
 }
 
 }
