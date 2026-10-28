@@ -1,0 +1,9 @@
+Made project more adaptive by switching this-
+/proc/meminfo — system-wide memory information.
+/proc/1234/status — information about the process with PID 1234.
+/proc/[PID]/status contains a field called VmRSS, among other information.
+So that we can track which process is using more RAM.
+Now we can tackle with that 1 process.
+
+Used RSS(Resident Set Size.) to get info of process along with RAM usage
+
