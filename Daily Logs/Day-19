@@ -1,0 +1,8 @@
+Based on the highest value of RSS in the current processes, we  store the selected process's PID, name,
+ and RSS in the PolicyDecision.
+
+Chooses a reclamation mode on its own seeing the values
+
+Gives the reason for recommendaqtion
+ 
+Mentions the faulty process if any.
