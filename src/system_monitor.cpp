@@ -88,15 +88,12 @@ std::vector<ProcessSnapshot> SystemMonitor::capture_processes() const {
         }
 
         std::ifstream status_file(entry.path() / "status");
-        if (!status_file) {
-            continue;
-        }
 
         bool found_name = false;
         bool found_rss = false;
         std::string line;
 
-        while (std::getline(status_file, line)) {
+        while (status_file && std::getline(status_file, line)) {
             if (line.rfind("Name:", 0) == 0) {
                 std::istringstream stream(line.substr(5));
                 stream >> process.name;
@@ -114,9 +111,7 @@ std::vector<ProcessSnapshot> SystemMonitor::capture_processes() const {
         }
 
         process.valid = found_name && found_rss;
-        if (process.valid) {
-            processes.push_back(process);
-        }
+        processes.push_back(process);
     }
 
     return processes;
