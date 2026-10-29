@@ -9,7 +9,6 @@ project(GhostByte
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
 add_executable(ghostbyte
     src/main.cpp
     src/config.cpp
@@ -18,6 +17,7 @@ add_executable(ghostbyte
     src/policy_engine.cpp
     src/reclamation_controller.cpp
     src/logger.cpp
+    src/feedback_analyzer.cpp
 )
 
 target_include_directories(ghostbyte
@@ -40,6 +40,7 @@ add_executable(ghostbyte_tests
     src/pressure_analyzer.cpp
     src/policy_engine.cpp
     src/reclamation_controller.cpp
+    src/feedback_analyzer.cpp
 )
 
 target_include_directories(ghostbyte_tests
@@ -47,4 +48,4 @@ target_include_directories(ghostbyte_tests
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-add_test(NAME GhostByteTests COMMAND ghostbyte_tests)
+add_test(NAME ghostbyte_tests COMMAND ghostbyte_tests)

@@ -2,7 +2,7 @@
 #include "ghostbyte/pressure_analyzer.hpp"
 #include "ghostbyte/policy_engine.hpp"
 #include "ghostbyte/reclamation_controller.hpp"
-
+#include "ghostbyte/feedback_analyzer.hpp"
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -131,6 +131,83 @@ int main() {
 
     assert(!result.action_taken);
     assert(result.message == "Real reclamation is not implemented yet");
+
+        // FeedbackAnalyzer tests
+    FeedbackAnalyzer feedback_analyzer;
+
+    MemorySnapshot before;
+    before.total_memory_bytes = 1000;
+    before.available_memory_bytes = 100;
+    before.valid = true;
+
+    MemorySnapshot after;
+    after.total_memory_bytes = 1000;
+    after.available_memory_bytes = 200;
+    after.valid = true;
+
+    // Available memory increased; pressure improved
+    FeedbackResult feedback = feedback_analyzer.analyze(
+        before, after,
+        PressureLevel::Critical,
+        PressureLevel::Elevated
+    );
+
+    assert(feedback.valid);
+    assert(feedback.available_memory_delta_bytes == 100);
+    assert(feedback.memory_trend == MemoryTrend::Increased);
+    assert(feedback.pressure_trend == PressureTrend::Improved);
+
+    // Available memory decreased; pressure worsened
+    after.available_memory_bytes = 50;
+
+    feedback = feedback_analyzer.analyze(
+        before, after,
+        PressureLevel::Healthy,
+        PressureLevel::Critical
+    );
+
+    assert(feedback.valid);
+    assert(feedback.available_memory_delta_bytes == -50);
+    assert(feedback.memory_trend == MemoryTrend::Decreased);
+    assert(feedback.pressure_trend == PressureTrend::Worsened);
+
+    // Available memory and pressure stayed unchanged
+    after.available_memory_bytes = before.available_memory_bytes;
+
+    feedback = feedback_analyzer.analyze(
+        before, after,
+        PressureLevel::Elevated,
+        PressureLevel::Elevated
+    );
+
+    assert(feedback.valid);
+    assert(feedback.available_memory_delta_bytes == 0);
+    assert(feedback.memory_trend == MemoryTrend::Unchanged);
+    assert(feedback.pressure_trend == PressureTrend::Unchanged);
+
+    // Invalid snapshot must produce invalid feedback
+    after.valid = false;
+
+    feedback = feedback_analyzer.analyze(
+        before, after,
+        PressureLevel::Healthy,
+        PressureLevel::Critical
+    );
+
+    assert(!feedback.valid);
+    assert(feedback.memory_trend == MemoryTrend::Unknown);
+    assert(feedback.pressure_trend == PressureTrend::Unknown);
+
+    // Unknown pressure must produce invalid feedback
+    after.valid = true;
+
+    feedback = feedback_analyzer.analyze(
+        before, after,
+        PressureLevel::Unknown,
+        PressureLevel::Healthy
+    );
+
+    assert(!feedback.valid);
 
     std::cout << "All GhostBytes tests passed!\n";
 

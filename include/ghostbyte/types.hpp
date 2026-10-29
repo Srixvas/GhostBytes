@@ -7,6 +7,27 @@
 
 namespace ghostbyte {
 
+enum class MemoryTrend {
+    Increased,
+    Decreased,
+    Unchanged,
+    Unknown
+};
+
+enum class PressureTrend {
+    Improved,
+    Worsened,
+    Unchanged,
+    Unknown
+};
+
+struct FeedbackResult {
+    std::int64_t available_memory_delta_bytes = 0;
+    MemoryTrend memory_trend = MemoryTrend::Unknown;
+    PressureTrend pressure_trend = PressureTrend::Unknown;
+    bool valid = false;
+};
+
 enum class PressureLevel {
     Healthy,
     Elevated,
