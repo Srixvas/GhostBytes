@@ -1,11 +1,17 @@
+
 #include "ghostbyte/config.hpp"
 #include "ghostbyte/pressure_analyzer.hpp"
 #include "ghostbyte/policy_engine.hpp"
 #include "ghostbyte/reclamation_controller.hpp"
 #include "ghostbyte/feedback_analyzer.hpp"
+
 #include <cassert>
 #include <cstdint>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <string>
 #include <vector>
 
 using namespace ghostbyte;
@@ -32,7 +38,7 @@ int main() {
 
     const std::uint64_t total = 1000;
 
-    // Default pressure thresholds: 10% Critical, 20% Elevated
+    // Default pressure thresholds
     assert(analyzer.analyze(make_snapshot(total, 650)) == PressureLevel::Healthy);
     assert(analyzer.analyze(make_snapshot(total, 200)) == PressureLevel::Elevated);
     assert(analyzer.analyze(make_snapshot(total, 100)) == PressureLevel::Critical);
@@ -41,7 +47,7 @@ int main() {
     assert(analyzer.analyze(make_snapshot(0, 0)) == PressureLevel::Unknown);
     assert(analyzer.analyze(make_snapshot(total, 1100)) == PressureLevel::Unknown);
 
-    // Custom thresholds: 15% Critical, 30% Elevated
+    // Custom thresholds
     Config custom_config;
     custom_config.critical_threshold_percent = 15.0;
     custom_config.elevated_threshold_percent = 30.0;
@@ -54,7 +60,7 @@ int main() {
     assert(custom_analyzer.analyze(make_snapshot(total, 250)) == PressureLevel::Elevated);
     assert(custom_analyzer.analyze(make_snapshot(total, 400)) == PressureLevel::Healthy);
 
-    // Invalid configuration must be rejected by validation and analysis
+    // Invalid configuration
     Config invalid_config;
     invalid_config.critical_threshold_percent = 35.0;
     invalid_config.elevated_threshold_percent = 20.0;
@@ -101,8 +107,8 @@ int main() {
     worsening_feedback.memory_trend = MemoryTrend::Decreased;
     worsening_feedback.pressure_trend = PressureTrend::Worsened;
 
-    PolicyDecision adaptive_worsening = engine.decide(
-        PressureLevel::Elevated, processes, worsening_feedback);
+    PolicyDecision adaptive_worsening =
+        engine.decide(PressureLevel::Elevated, processes, worsening_feedback);
 
     assert(adaptive_worsening.mode == ReclamationMode::Moderate);
     assert(adaptive_worsening.candidate_pid == 202);
@@ -112,20 +118,20 @@ int main() {
     improving_feedback.memory_trend = MemoryTrend::Increased;
     improving_feedback.pressure_trend = PressureTrend::Improved;
 
-    PolicyDecision adaptive_improving = engine.decide(
-        PressureLevel::Elevated, processes, improving_feedback);
+    PolicyDecision adaptive_improving =
+        engine.decide(PressureLevel::Elevated, processes, improving_feedback);
 
     assert(adaptive_improving.mode == ReclamationMode::Conservative);
 
-    // Invalid feedback must preserve the baseline policy.
+    // Invalid feedback preserves baseline policy
     FeedbackResult invalid_feedback;
 
-    PolicyDecision adaptive_invalid = engine.decide(
-        PressureLevel::Elevated, processes, invalid_feedback);
+    PolicyDecision adaptive_invalid =
+        engine.decide(PressureLevel::Elevated, processes, invalid_feedback);
 
     assert(adaptive_invalid.mode == ReclamationMode::Conservative);
 
-    // Feedback must not override critical or healthy pressure.
+    // Feedback must not override critical or healthy pressure
     assert(engine.decide(
         PressureLevel::Critical, processes, improving_feedback).mode
         == ReclamationMode::Aggressive);
@@ -142,7 +148,7 @@ int main() {
     assert(result.mode == ReclamationMode::None);
     assert(result.message == "No reclamation required");
 
-    // Controller: conservative dry run
+    // Conservative dry run
     PolicyDecision elevated = engine.decide(PressureLevel::Elevated);
     result = controller.execute(elevated);
 
@@ -150,7 +156,7 @@ int main() {
     assert(result.mode == ReclamationMode::Conservative);
     assert(result.message == "DRY RUN: Conservative reclamation planned");
 
-    // Controller: aggressive dry run
+    // Aggressive dry run
     PolicyDecision critical = engine.decide(PressureLevel::Critical);
     result = controller.execute(critical);
 
@@ -165,13 +171,91 @@ int main() {
     assert(!result.action_taken);
     assert(result.message == "Unknown memory pressure; no action taken");
 
-    // Real reclamation is not implemented yet
+    // Real reclamation remains disabled by default
     result = controller.execute(critical, false);
 
     assert(!result.action_taken);
-    assert(result.message == "Real reclamation is not implemented yet");
+    assert(result.message == "Real reclamation disabled by configuration");
 
-        // FeedbackAnalyzer tests
+    // Invalid reclaim size must be rejected
+    ReclamationConfig invalid_reclaim_config;
+    invalid_reclaim_config.enabled = true;
+    invalid_reclaim_config.cgroup_path = "/tmp/ghostbyte-test";
+    invalid_reclaim_config.reclaim_bytes = 0;
+
+    ReclamationController invalid_reclaim_controller(invalid_reclaim_config);
+    result = invalid_reclaim_controller.execute(critical, false);
+
+    assert(!result.action_taken);
+    assert(result.message ==
+           "Reclamation rejected: request must be between 1 byte and 64 MiB");
+
+    // Empty cgroup path must be rejected
+    ReclamationConfig missing_path_config;
+    missing_path_config.enabled = true;
+    missing_path_config.reclaim_bytes = 1024;
+
+    ReclamationController missing_path_controller(missing_path_config);
+    result = missing_path_controller.execute(critical, false);
+
+    assert(!result.action_taken);
+    assert(result.message == "Reclamation rejected: cgroup path is empty");
+
+    // Safely simulate a memory.reclaim write using a unique temporary directory
+    char temp_template[] = "/tmp/ghostbyte-reclaim-test-XXXXXX";
+    char* created_dir = mkdtemp(temp_template);
+    assert(created_dir != nullptr);
+
+    const std::filesystem::path temp_dir(created_dir);
+    const auto reclaim_file = temp_dir / "memory.reclaim";
+
+    {
+        std::ofstream file(reclaim_file);
+        assert(file.is_open());
+    }
+
+    {
+        std::ofstream file(temp_dir / "cgroup.procs");
+        assert(file.is_open());
+    }
+
+    {
+        std::ofstream file(temp_dir / "memory.current");
+        assert(file.is_open());
+        file << "8192";
+    }
+
+    {
+        std::ofstream file(temp_dir / "cgroup.controllers");
+        assert(file.is_open());
+    }
+
+    ReclamationConfig test_reclaim_config;
+    test_reclaim_config.enabled = true;
+    test_reclaim_config.cgroup_path = temp_dir.string();
+    test_reclaim_config.reclaim_bytes = 4096;
+
+    ReclamationController test_reclaim_controller(test_reclaim_config);
+    result = test_reclaim_controller.execute(critical, false);
+
+    assert(result.action_taken);
+    assert(result.measurement_valid);
+    assert(result.memory_before_bytes == 8192);
+    assert(result.memory_after_bytes == 8192);
+    assert(result.observed_reclaimed_bytes == 0);
+    assert(result.message ==
+           "Reclamation request submitted; observed cgroup memory change measured");
+
+    {
+        std::ifstream file(reclaim_file);
+        std::string written_value;
+        file >> written_value;
+        assert(written_value == "4096");
+    }
+
+    std::filesystem::remove_all(temp_dir);
+
+    // FeedbackAnalyzer tests
     FeedbackAnalyzer feedback_analyzer;
 
     MemorySnapshot before;
