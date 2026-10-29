@@ -25,13 +25,13 @@ PolicyDecision PolicyEngine::decide(PressureLevel pressure) const {
         case PressureLevel::Unknown:
         default:
             decision.mode = ReclamationMode::None;
-            decision.reason = "Memory pressure is unknown; no action recommended";
+            decision.reason =
+                "Memory pressure is unknown; no action recommended";
             break;
     }
 
     return decision;
 }
-
 
 PolicyDecision PolicyEngine::decide(
     PressureLevel pressure,
@@ -47,13 +47,15 @@ PolicyDecision PolicyEngine::decide(
     const ProcessSnapshot* largest = nullptr;
 
     for (const auto& process : processes) {
-        if (!process.valid || process.pid <= 0 ||
+        if (!process.valid ||
+            process.pid <= 0 ||
             process.resident_memory_bytes == 0) {
             continue;
         }
 
         if (largest == nullptr ||
-            process.resident_memory_bytes > largest->resident_memory_bytes) {
+            process.resident_memory_bytes >
+                largest->resident_memory_bytes) {
             largest = &process;
         }
     }
@@ -61,10 +63,41 @@ PolicyDecision PolicyEngine::decide(
     if (largest != nullptr) {
         decision.candidate_pid = largest->pid;
         decision.candidate_name = largest->name;
-        decision.candidate_rss_bytes = largest->resident_memory_bytes;
+        decision.candidate_rss_bytes =
+            largest->resident_memory_bytes;
+
         decision.reason = pressure == PressureLevel::Critical
             ? "Critical memory pressure; largest RSS process identified for assessment"
             : "Elevated memory pressure; largest RSS process identified for assessment";
+    }
+
+    return decision;
+}
+
+PolicyDecision PolicyEngine::decide(
+    PressureLevel pressure,
+    const std::vector<ProcessSnapshot>& processes,
+    const FeedbackResult& feedback) const {
+
+    PolicyDecision decision = decide(pressure, processes);
+
+    // Current pressure takes priority over historical trends.
+    if (pressure != PressureLevel::Elevated || !feedback.valid) {
+        return decision;
+    }
+
+    const bool pressure_worsened =
+        feedback.pressure_trend == PressureTrend::Worsened;
+
+    const bool memory_falling_without_pressure_improvement =
+        feedback.pressure_trend == PressureTrend::Unchanged &&
+        feedback.memory_trend == MemoryTrend::Decreased;
+
+    if (pressure_worsened ||
+        memory_falling_without_pressure_improvement) {
+        decision.mode = ReclamationMode::Moderate;
+        decision.reason =
+            "Elevated pressure is worsening or available memory is falling; moderate response recommended";
     }
 
     return decision;

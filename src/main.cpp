@@ -130,7 +130,8 @@ int main() {
             );
         }
 
-        const PolicyDecision decision = engine.decide(pressure, processes);
+        const PolicyDecision decision =
+            engine.decide(pressure, processes, feedback);
         const ReclamationResult result = controller.execute(decision, true);
 
         bool logging_ok = true;

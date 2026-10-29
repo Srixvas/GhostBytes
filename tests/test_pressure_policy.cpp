@@ -95,6 +95,45 @@ int main() {
     assert(empty_workload.candidate_pid == -1);
     assert(empty_workload.mode == ReclamationMode::Aggressive);
 
+    // Adaptive policy tests
+    FeedbackResult worsening_feedback;
+    worsening_feedback.valid = true;
+    worsening_feedback.memory_trend = MemoryTrend::Decreased;
+    worsening_feedback.pressure_trend = PressureTrend::Worsened;
+
+    PolicyDecision adaptive_worsening = engine.decide(
+        PressureLevel::Elevated, processes, worsening_feedback);
+
+    assert(adaptive_worsening.mode == ReclamationMode::Moderate);
+    assert(adaptive_worsening.candidate_pid == 202);
+
+    FeedbackResult improving_feedback;
+    improving_feedback.valid = true;
+    improving_feedback.memory_trend = MemoryTrend::Increased;
+    improving_feedback.pressure_trend = PressureTrend::Improved;
+
+    PolicyDecision adaptive_improving = engine.decide(
+        PressureLevel::Elevated, processes, improving_feedback);
+
+    assert(adaptive_improving.mode == ReclamationMode::Conservative);
+
+    // Invalid feedback must preserve the baseline policy.
+    FeedbackResult invalid_feedback;
+
+    PolicyDecision adaptive_invalid = engine.decide(
+        PressureLevel::Elevated, processes, invalid_feedback);
+
+    assert(adaptive_invalid.mode == ReclamationMode::Conservative);
+
+    // Feedback must not override critical or healthy pressure.
+    assert(engine.decide(
+        PressureLevel::Critical, processes, improving_feedback).mode
+        == ReclamationMode::Aggressive);
+
+    assert(engine.decide(
+        PressureLevel::Healthy, processes, worsening_feedback).mode
+        == ReclamationMode::None);
+
     // Controller: no reclamation required
     PolicyDecision healthy = engine.decide(PressureLevel::Healthy);
     ReclamationResult result = controller.execute(healthy);

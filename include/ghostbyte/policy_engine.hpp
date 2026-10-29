@@ -9,9 +9,15 @@ namespace ghostbyte {
 class PolicyEngine {
 public:
     PolicyDecision decide(PressureLevel pressure) const;
+
     PolicyDecision decide(
         PressureLevel pressure,
         const std::vector<ProcessSnapshot>& processes) const;
+
+    PolicyDecision decide(
+        PressureLevel pressure,
+        const std::vector<ProcessSnapshot>& processes,
+        const FeedbackResult& feedback) const;
 };
 
 }

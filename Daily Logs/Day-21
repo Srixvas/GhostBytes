@@ -1,0 +1,7 @@
+Added a feedback analyzer in the codes.
+
+Checks the snapshots every 2 seconds and compares them.
+
+It then classifes into how bad or good th esituation is compared to the last time.
+
+Also displays the delta chnage in the available mem.
