@@ -1,6 +1,32 @@
 #include "ghostbyte/policy_engine.hpp"
+#include <algorithm>
 
 namespace ghostbyte {
+namespace {
+    constexpr std::uint64_t MAX_RECLAIM_BYTES = 64ULL * 1024 * 1024; // 64 MiB safety cap
+
+    void set_dynamic_target(PolicyDecision& decision) {
+        if (decision.mode == ReclamationMode::None || decision.candidate_rss_bytes == 0) {
+            decision.target_reclaim_bytes = 0;
+            return;
+        }
+        std::uint64_t target = 0;
+        switch (decision.mode) {
+            case ReclamationMode::Conservative:
+                target = decision.candidate_rss_bytes / 10; // 10% of workload
+                break;
+            case ReclamationMode::Moderate:
+                target = decision.candidate_rss_bytes / 5;  // 20% of workload
+                break;
+            case ReclamationMode::Aggressive:
+                target = decision.candidate_rss_bytes / 3;  // ~33% of workload
+                break;
+            default:
+                break;
+        }
+        decision.target_reclaim_bytes = std::min(target, MAX_RECLAIM_BYTES);
+    }
+}
 
 PolicyDecision PolicyEngine::decide(PressureLevel pressure) const {
     PolicyDecision decision;
@@ -11,22 +37,18 @@ PolicyDecision PolicyEngine::decide(PressureLevel pressure) const {
             decision.mode = ReclamationMode::None;
             decision.reason = "Memory availability is healthy";
             break;
-
         case PressureLevel::Elevated:
             decision.mode = ReclamationMode::Conservative;
             decision.reason = "Memory pressure is elevated";
             break;
-
         case PressureLevel::Critical:
             decision.mode = ReclamationMode::Aggressive;
             decision.reason = "Memory pressure is critical";
             break;
-
         case PressureLevel::Unknown:
         default:
             decision.mode = ReclamationMode::None;
-            decision.reason =
-                "Memory pressure is unknown; no action recommended";
+            decision.reason = "Memory pressure is unknown; no action recommended";
             break;
     }
 
@@ -63,14 +85,14 @@ PolicyDecision PolicyEngine::decide(
     if (largest != nullptr) {
         decision.candidate_pid = largest->pid;
         decision.candidate_name = largest->name;
-        decision.candidate_rss_bytes =
-            largest->resident_memory_bytes;
+        decision.candidate_rss_bytes = largest->resident_memory_bytes;
 
         decision.reason = pressure == PressureLevel::Critical
             ? "Critical memory pressure; largest RSS process identified for assessment"
             : "Elevated memory pressure; largest RSS process identified for assessment";
     }
 
+    set_dynamic_target(decision);
     return decision;
 }
 
@@ -100,9 +122,9 @@ PolicyDecision PolicyEngine::decide(
             "Elevated pressure is worsening or available memory is falling; moderate response recommended";
     }
 
+    set_dynamic_target(decision);
     return decision;
 }
-
 
 PolicyDecision PolicyEngine::decide(
     PressureLevel pressure,
@@ -128,6 +150,7 @@ PolicyDecision PolicyEngine::decide(
             "Previous reclamation coincided with an observed memory decrease";
     }
 
+    set_dynamic_target(decision);
     return decision;
 }
 

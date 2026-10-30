@@ -91,6 +91,7 @@ int main() {
     assert(workload_decision.candidate_pid == 202);
     assert(workload_decision.candidate_name == "large-worker");
     assert(workload_decision.candidate_rss_bytes == 50 * 1024);
+    assert(workload_decision.target_reclaim_bytes == (50 * 1024) / 3);
 
     PolicyDecision healthy_workload =
         engine.decide(PressureLevel::Healthy, processes);

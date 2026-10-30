@@ -81,8 +81,10 @@ ReclamationResult ReclamationController::execute(
         return result;
     }
 
-    if (config_.reclaim_bytes == 0 ||
-        config_.reclaim_bytes > 64ULL * 1024 * 1024) {
+    const std::uint64_t bytes_to_reclaim = decision.target_reclaim_bytes > 0 ? decision.target_reclaim_bytes : config_.reclaim_bytes;
+
+    if (bytes_to_reclaim == 0 ||
+        bytes_to_reclaim > 64ULL * 1024 * 1024) {
         result.message =
             "Reclamation rejected: request must be between 1 byte and 64 MiB";
         return result;
@@ -154,7 +156,7 @@ ReclamationResult ReclamationController::execute(
             return result;
         }
 
-        file << config_.reclaim_bytes;
+        file << bytes_to_reclaim;
         file.flush();
 
         if (!file.good()) {

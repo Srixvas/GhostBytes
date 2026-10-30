@@ -69,6 +69,7 @@ struct PolicyDecision {
     int candidate_pid = -1;
     std::string candidate_name;
     std::uint64_t candidate_rss_bytes = 0;
+    std::uint64_t target_reclaim_bytes = 0;
 };
 
 }
