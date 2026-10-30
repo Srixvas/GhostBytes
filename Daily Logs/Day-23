@@ -1,0 +1,9 @@
+Huge milestone in project achieved.
+
+Went from just deciding to reclaim memory to actually reclaiming memory.
+
+Used c-groups/control groups to organize manage and measure the resource usage.
+
+This allows a authorised user to claim the memory if needed.
+
+OUR PROJECT DOESNT KILL A PROCESS RATHER RECLAIMS THE MEMORY THAT HAS BEEN IN CACHE.

@@ -49,3 +49,10 @@ target_include_directories(ghostbyte_tests
 )
 
 add_test(NAME ghostbyte_tests COMMAND ghostbyte_tests)
+# --- Integration Test Runner ---
+add_executable(ghostbyte_reclaim_runner
+    tests/run_real_reclaim.cpp
+    src/reclamation_controller.cpp
+    src/policy_engine.cpp
+)
+target_include_directories(ghostbyte_reclaim_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

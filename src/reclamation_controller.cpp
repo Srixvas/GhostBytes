@@ -5,6 +5,7 @@
 #include <fstream>
 #include <thread>
 #include <utility>
+#include <unistd.h>
 
 namespace ghostbyte {
 namespace {
@@ -101,22 +102,41 @@ ReclamationResult ReclamationController::execute(
 
     ec.clear();
     const fs::path cgroup_root = fs::canonical("/sys/fs/cgroup", ec);
-
-    if (ec || canonical_path == cgroup_root) {
+    if (ec) {
         result.message =
-            "Reclamation rejected: cgroup filesystem root is not allowed";
+            "Reclamation rejected: could not resolve cgroup filesystem root";
+        return result;
+    }
+
+    const fs::path user_cgroup =
+        fs::path("user.slice") /
+        ("user-" + std::to_string(::getuid()) + ".slice") /
+        ("user@" + std::to_string(::getuid()) + ".service");
+
+    ec.clear();
+    const fs::path delegated_root =
+        fs::canonical(cgroup_root / user_cgroup.relative_path(), ec);
+
+    if (ec || canonical_path == delegated_root ||
+        canonical_path.string().compare(
+            0, delegated_root.string().size(),
+            delegated_root.string()) != 0 ||
+        canonical_path.string().size() <= delegated_root.string().size() ||
+        canonical_path.string()[delegated_root.string().size()] != '/') {
+        result.message =
+            "Reclamation rejected: target must be a child of the delegated user cgroup";
         return result;
     }
 
     const fs::path reclaim_file = canonical_path / "memory.reclaim";
     const fs::path current_file = canonical_path / "memory.current";
 
-    if (!fs::is_regular_file(canonical_path / "cgroup.procs") ||
-        !fs::is_regular_file(current_file) ||
-        !fs::is_regular_file(reclaim_file) ||
-        !fs::is_regular_file(canonical_path / "cgroup.controllers")) {
+    if (!fs::exists(canonical_path / "cgroup.procs") ||
+        !fs::exists(current_file) ||
+        !fs::exists(reclaim_file) ||
+        !fs::exists(canonical_path / "cgroup.controllers")) {
         result.message =
-            "Reclamation rejected: target does not look like a cgroup v2 directory";
+            "Reclamation rejected: required cgroup v2 interfaces are unavailable";
         return result;
     }
 

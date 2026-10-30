@@ -283,19 +283,17 @@ int main() {
     ReclamationController test_reclaim_controller(test_reclaim_config);
     result = test_reclaim_controller.execute(critical, false);
 
-    assert(result.action_taken);
-    assert(result.measurement_valid);
-    assert(result.memory_before_bytes == 8192);
-    assert(result.memory_after_bytes == 8192);
-    assert(result.observed_reclaimed_bytes == 0);
+    // Fake cgroups must be rejected before any reclamation write.
+    assert(!result.action_taken);
+    assert(!result.measurement_valid);
     assert(result.message ==
-           "Reclamation request submitted; observed cgroup memory change measured");
+           "Reclamation rejected: target must be a child of the delegated user cgroup");
 
     {
         std::ifstream file(reclaim_file);
         std::string written_value;
         file >> written_value;
-        assert(written_value == "4096");
+        assert(written_value.empty());
     }
 
     std::filesystem::remove_all(temp_dir);
