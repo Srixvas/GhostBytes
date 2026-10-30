@@ -18,6 +18,12 @@ public:
         PressureLevel pressure,
         const std::vector<ProcessSnapshot>& processes,
         const FeedbackResult& feedback) const;
+
+    PolicyDecision decide(
+        PressureLevel pressure,
+        const std::vector<ProcessSnapshot>& processes,
+        const FeedbackResult& feedback,
+        const ReclamationFeedback& reclamation_feedback) const;
 };
 
 }

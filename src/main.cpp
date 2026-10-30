@@ -103,6 +103,7 @@ int main() {
     bool has_previous_snapshot = false;
     MemorySnapshot previous_snapshot;
     PressureLevel previous_pressure = PressureLevel::Unknown;
+    ReclamationFeedback previous_reclamation_feedback;
 
     std::cout << "========== GhostBytes ==========\n"
               << "Sampling interval: "
@@ -130,9 +131,21 @@ int main() {
             );
         }
 
-        const PolicyDecision decision =
-            engine.decide(pressure, processes, feedback);
+        const PolicyDecision decision = engine.decide(
+            pressure,
+            processes,
+            feedback,
+            previous_reclamation_feedback);
+
         const ReclamationResult result = controller.execute(decision, true);
+
+        // Dry runs and unmeasured actions are not reclamation outcomes.
+        ReclamationFeedback current_reclamation_feedback;
+        if (result.action_taken && result.measurement_valid) {
+            current_reclamation_feedback.valid = true;
+            current_reclamation_feedback.observed_reclaimed_bytes =
+                result.observed_reclaimed_bytes;
+        }
 
         bool logging_ok = true;
         logging_ok &= logger.log("Cycle: " + std::to_string(cycle));
@@ -247,6 +260,8 @@ int main() {
         previous_pressure = pressure;
         has_previous_snapshot = snapshot.valid &&
                         pressure != PressureLevel::Unknown;
+
+        previous_reclamation_feedback = current_reclamation_feedback;
 
         for (unsigned int tick = 0;
              tick < config.sampling_interval_seconds * 10U &&

@@ -103,4 +103,32 @@ PolicyDecision PolicyEngine::decide(
     return decision;
 }
 
+
+PolicyDecision PolicyEngine::decide(
+    PressureLevel pressure,
+    const std::vector<ProcessSnapshot>& processes,
+    const FeedbackResult& feedback,
+    const ReclamationFeedback& reclamation_feedback) const {
+
+    PolicyDecision decision = decide(pressure, processes, feedback);
+
+    if (!reclamation_feedback.valid ||
+        pressure != PressureLevel::Elevated) {
+        return decision;
+    }
+
+    if (reclamation_feedback.observed_reclaimed_bytes == 0) {
+        if (decision.mode == ReclamationMode::Conservative) {
+            decision.mode = ReclamationMode::Moderate;
+            decision.reason =
+                "Elevated pressure persists and no memory decrease was observed after reclamation";
+        }
+    } else if (decision.mode == ReclamationMode::Conservative) {
+        decision.reason =
+            "Previous reclamation coincided with an observed memory decrease";
+    }
+
+    return decision;
+}
+
 }

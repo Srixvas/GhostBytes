@@ -57,6 +57,11 @@ struct ProcessSnapshot {
     bool valid = false;
 };
 
+struct ReclamationFeedback {
+    bool valid = false;
+    std::uint64_t observed_reclaimed_bytes = 0;
+};
+
 struct PolicyDecision {
     PressureLevel pressure = PressureLevel::Unknown;
     ReclamationMode mode = ReclamationMode::None;

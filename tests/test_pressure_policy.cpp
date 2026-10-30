@@ -140,6 +140,51 @@ int main() {
         PressureLevel::Healthy, processes, worsening_feedback).mode
         == ReclamationMode::None);
 
+    // Reclamation outcome-aware policy tests
+    ReclamationFeedback successful_reclamation;
+    successful_reclamation.valid = true;
+    successful_reclamation.observed_reclaimed_bytes = 4096;
+
+    PolicyDecision successful_outcome = engine.decide(
+        PressureLevel::Elevated,
+        processes,
+        invalid_feedback,
+        successful_reclamation);
+
+    assert(successful_outcome.mode == ReclamationMode::Conservative);
+    assert(std::string(successful_outcome.reason) ==
+           "Previous reclamation coincided with an observed memory decrease");
+
+    ReclamationFeedback zero_reclamation;
+    zero_reclamation.valid = true;
+    zero_reclamation.observed_reclaimed_bytes = 0;
+
+    PolicyDecision zero_outcome = engine.decide(
+        PressureLevel::Elevated,
+        processes,
+        invalid_feedback,
+        zero_reclamation);
+
+    assert(zero_outcome.mode == ReclamationMode::Moderate);
+
+    ReclamationFeedback invalid_reclamation;
+
+    PolicyDecision invalid_outcome = engine.decide(
+        PressureLevel::Elevated,
+        processes,
+        invalid_feedback,
+        invalid_reclamation);
+
+    assert(invalid_outcome.mode == ReclamationMode::Conservative);
+
+    PolicyDecision critical_outcome = engine.decide(
+        PressureLevel::Critical,
+        processes,
+        invalid_feedback,
+        zero_reclamation);
+
+    assert(critical_outcome.mode == ReclamationMode::Aggressive);
+
     // Controller: no reclamation required
     PolicyDecision healthy = engine.decide(PressureLevel::Healthy);
     ReclamationResult result = controller.execute(healthy);
