@@ -81,10 +81,24 @@ double bytes_to_mib(std::uint64_t bytes) {
 
 }
 
-int main() {
+int main(int argc, char** argv) {
     using namespace ghostbyte;
 
     Config config;
+    bool dry_run = true;
+    std::string target_cgroup;
+    if (argc == 3 && std::string(argv[1]) == "--test-cgroup") {
+        target_cgroup = argv[2];
+        dry_run = false;
+    }
+    
+    if (const char* crit = std::getenv("GB_CRITICAL")) {
+        config.critical_threshold_percent = std::stod(crit);
+    }
+    if (const char* elev = std::getenv("GB_ELEVATED")) {
+        config.elevated_threshold_percent = std::stod(elev);
+    }
+
 
     if (!config.is_valid()) {
         std::cerr << "Invalid GhostBytes configuration.\n";
@@ -96,7 +110,10 @@ int main() {
     SystemMonitor monitor;
     PressureAnalyzer analyzer(config);
     PolicyEngine engine;
-    ReclamationController controller;
+    ReclamationConfig rec_config;
+    rec_config.enabled = !dry_run;
+    rec_config.cgroup_path = target_cgroup;
+    ReclamationController controller(rec_config);
     Logger logger;
     FeedbackAnalyzer feedback_analyzer;
 
@@ -105,11 +122,7 @@ int main() {
     PressureLevel previous_pressure = PressureLevel::Unknown;
     ReclamationFeedback previous_reclamation_feedback;
 
-    std::cout << "========== GhostBytes ==========\n"
-              << "Sampling interval: "
-              << config.sampling_interval_seconds << " second(s)\n"
-              << "Mode: DRY RUN (no processes will be terminated)\n"
-              << "Press Ctrl+C to stop.\n\n";
+    
 
     std::uint64_t cycle = 0;
 
@@ -137,7 +150,7 @@ int main() {
             feedback,
             previous_reclamation_feedback);
 
-        const ReclamationResult result = controller.execute(decision, true);
+        const ReclamationResult result = controller.execute(decision, dry_run);
 
         // Dry runs and unmeasured actions are not reclamation outcomes.
         ReclamationFeedback current_reclamation_feedback;
@@ -206,50 +219,62 @@ int main() {
 
         logging_ok &= logger.log("Controller result: " + result.message);
 
-        std::cout << "[Cycle " << cycle << "]\n";
+        
+        const char* CLEAR_SCREEN = "\033[2J\033[H";
+        const char* RESET = "\033[0m";
+        const char* RED = "\033[1;31m";
+        const char* YELLOW = "\033[1;33m";
+        const char* GREEN = "\033[1;32m";
+        const char* CYAN = "\033[1;36m";
+        const char* BOLD = "\033[1m";
+
+        const char* pressure_color = GREEN;
+        if (pressure == ghostbyte::PressureLevel::Critical) pressure_color = RED;
+        else if (pressure == ghostbyte::PressureLevel::Elevated) pressure_color = YELLOW;
+
+        std::cout << CLEAR_SCREEN;
+        std::cout << BOLD << CYAN << "========== GhostBytes Live Dashboard ==========" << RESET << "\n";
+        std::cout << "Cycle: " << cycle << " | Mode: " << (dry_run ? "DRY RUN (safe mode)" : "LIVE RECLAMATION (test target)") << "\n";
+        std::cout << "-----------------------------------------------\n";
 
         if (snapshot.valid && snapshot.total_memory_bytes > 0) {
-            std::cout << std::fixed << std::setprecision(2)
-                      << "Memory: "
-                      << bytes_to_mib(snapshot.available_memory_bytes)
-                      << " / " << bytes_to_mib(snapshot.total_memory_bytes)
-                      << " MiB available (" << available_percent << "%)\n";
+            std::cout << BOLD << "System Memory : " << RESET
+                      << std::fixed << std::setprecision(2)
+                      << bytes_to_mib(snapshot.available_memory_bytes) << " / "
+                      << bytes_to_mib(snapshot.total_memory_bytes) << " MiB available ("
+                      << available_percent << "%)\n";
         } else {
-            std::cout << "Memory: unavailable (snapshot invalid)\n";
+            std::cout << BOLD << "System Memory : " << RESET << "unavailable\n";
         }
 
-        std::cout << "Processes observed: " << processes.size() << '\n'
-                  << "Pressure: " << pressure_name(pressure) << '\n';
-
-        if (feedback.valid) {
-            const double delta_mib =
-                static_cast<double>(feedback.available_memory_delta_bytes) /
-                (1024.0 * 1024.0);
-
-            std::cout << std::showpos
-                      << "Available memory change: " << delta_mib << " MiB\n"
-                      << std::noshowpos
-                      << "Memory trend: "
-                      << memory_trend_name(feedback.memory_trend) << '\n'
-                      << "Pressure trend: "
-                      << pressure_trend_name(feedback.pressure_trend) << '\n';
-        } else {
-            std::cout << "Feedback: unavailable (baseline or invalid measurements)\n";
-        }
-
-        std::cout << "Mode: " << mode_name(decision.mode) << '\n'
-                  << "Reason: " << decision.reason << '\n';
+        std::cout << BOLD << "Pressure Level: " << RESET << pressure_color << pressure_name(pressure) << RESET << "\n";
+        std::cout << BOLD << "Active Mode   : " << RESET << mode_name(decision.mode) << "\n";
+        std::cout << BOLD << "Decision      : " << RESET << decision.reason << "\n";
+        std::cout << "-----------------------------------------------\n";
 
         if (decision.candidate_pid > 0) {
-            std::cout << "Candidate: PID " << decision.candidate_pid
-                      << " (" << decision.candidate_name << "), RSS "
-                      << bytes_to_mib(decision.candidate_rss_bytes)
-                      << " MiB — assessment only\n";
+            std::cout << BOLD << "[Target Workload] " << RESET << "PID " << decision.candidate_pid
+                      << " (" << decision.candidate_name << ") | RSS: "
+                      << bytes_to_mib(decision.candidate_rss_bytes) << " MiB\n";
         } else {
-            std::cout << "Candidate: none\n";
+            std::cout << BOLD << "[Target Workload] " << RESET << "None\n";
         }
 
-        std::cout << "Controller: " << result.message << "\n\n";
+        std::cout << BOLD << "[Controller]      " << RESET << result.message << "\n";
+        std::cout << "-----------------------------------------------\n";
+
+        if (feedback.valid) {
+            const double delta_mib = static_cast<double>(feedback.available_memory_delta_bytes) / (1024.0 * 1024.0);
+            std::cout << BOLD << "[Feedback]        " << RESET << "Avail Change: " << std::showpos << delta_mib << " MiB" << std::noshowpos
+                      << " | Trend: " << memory_trend_name(feedback.memory_trend)
+                      << " | Pressure: " << pressure_trend_name(feedback.pressure_trend) << "\n";
+        } else {
+            std::cout << BOLD << "[Feedback]        " << RESET << "Awaiting baseline measurements...\n";
+        }
+
+        std::cout << "===============================================\n";
+        std::cout << "Press Ctrl+C to stop.\n";
+        std::cout << std::flush;
 
         if (!logging_ok) {
             std::cerr
