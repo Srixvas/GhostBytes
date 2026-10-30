@@ -1,0 +1,7 @@
+Used the readigns from feedback analyzer to influence policy decision changes.
+
+Created the groundwork for self-aware/ decision making.
+
+Connected what we did in previous commit by making the feedback analyzer directly influence policy decision so that it can choose on its own seeing the delta changes.
+
+Basically, recommends policy decision.
