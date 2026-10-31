@@ -56,3 +56,13 @@ add_executable(ghostbyte_reclaim_runner
     src/policy_engine.cpp
 )
 target_include_directories(ghostbyte_reclaim_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_executable(ghostbyte_15_cycle_demo
+    demos/pressure_recovery_15_cycles.cpp
+    src/config.cpp
+    src/pressure_analyzer.cpp
+    src/policy_engine.cpp
+    src/reclamation_controller.cpp
+)
+target_include_directories(ghostbyte_15_cycle_demo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_test(NAME ghostbyte_15_cycle_demo COMMAND ghostbyte_15_cycle_demo)

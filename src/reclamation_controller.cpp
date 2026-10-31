@@ -6,6 +6,8 @@
 #include <thread>
 #include <utility>
 #include <unistd.h>
+#include <cerrno>
+#include <cstring>
 
 namespace ghostbyte {
 namespace {
@@ -53,16 +55,13 @@ ReclamationResult ReclamationController::execute(
     if (dry_run) {
         switch (decision.mode) {
             case ReclamationMode::Conservative:
-                result.message =
-                    "DRY RUN: Conservative reclamation planned";
+                result.message = "DRY RUN: Conservative reclamation planned";
                 break;
             case ReclamationMode::Moderate:
-                result.message =
-                    "DRY RUN: Moderate reclamation planned";
+                result.message = "DRY RUN: Moderate reclamation planned";
                 break;
             case ReclamationMode::Aggressive:
-                result.message =
-                    "DRY RUN: Aggressive reclamation planned";
+                result.message = "DRY RUN: Aggressive reclamation planned";
                 break;
             case ReclamationMode::None:
                 result.message = "No reclamation required";
@@ -160,8 +159,7 @@ ReclamationResult ReclamationController::execute(
         file.flush();
 
         if (!file.good()) {
-            result.message =
-                "Reclamation failed: could not write memory.reclaim";
+            result.message = std::string("Reclamation failed: could not write memory.reclaim (OS Error: ") + std::strerror(errno) + ")";
             return result;
         }
     }
